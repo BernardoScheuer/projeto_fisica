@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, minimum-scale=0.5, maximum-scale=3.0" />
+  <meta name="description" content="Simulação interativa de lançamento de projétil - Projeto de Física" />
+  <meta name="theme-color" content="#38bdf8" />
+  <title>Projeto de Física: Lançamento de Projétil</title>
+  <style>
+    :root {
+      --bg: #101828;
+      --panel: #181f2a;
+      --soft: #232a36;
+      --text: #e5e7eb;
+      --muted: #b0b7c3;
+      --accent: #22c55e;
+      --accent-2: #38bdf8;
+      --accent-3: #fbbf24;
+      --danger: #ef4444;
+      --glass: #181f2ae6;
+      --shadow: 0 2px 12px rgba(34,197,94,0.08);
+      --border: 1px solid #232a36;
+      --radius: 16px;
+      --blur: 8px;
+      --focus: #38bdf8;
+    }
+    * {
+      box-sizing: border-box;
+      transition: background 0.3s, color 0.2s, border 0.2s, box-shadow 0.2s, filter 0.2s;
+    }
+   
+    /* Otimizações para laptops e performance */
+    @media (min-width: 1024px) {
+      * {
+        /* Transições mais suaves em laptops/desktops */
+        transition: background 0.25s ease-out, color 0.2s ease-out,
+                   border 0.2s ease-out, box-shadow 0.3s ease-out,
+                   filter 0.2s ease-out, transform 0.25s ease-out;
+      }
+     
+      .panel:hover {
+        /* Efeitos hover mais evidentes em laptops */
+        box-shadow: 0 6px 25px rgba(34,197,94,0.15);
+        transform: translateY(-2px);
+      }
+     
+      .btn:hover {
+        /* Botões mais responsivos em laptops */
+        transform: translateY(-3px) scale(1.08);
+        box-shadow: 0 16px 40px rgba(34,197,94,0.25);
+      }
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      padding: 18px 28px 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: var(--border);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      animation: fadeInDown 0.7s cubic-bezier(.4,2,.3,1);
+    }
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: 0.2px;
+      font-weight: 700;
+      color: var(--accent-2);
+      animation: fadeInLeft 1s cubic-bezier(.4,2,.3,1);
+    }
+    header .badge {
+      color: #181f2a;
+      background: var(--accent-2);
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 12px;
+      box-shadow: none;
+      letter-spacing: 0.2px;
+      animation: fadeInRight 1s cubic-bezier(.4,2,.3,1);
+    }
+
+
+    .container {
+      display: grid;
+      grid-template-columns: 380px 1fr 400px;
+      grid-template-areas: "controls simulation formulas";
+      gap: 24px;
+      padding: 28px 24px;
+      min-height: calc(100vh - 80px);
+      max-width: 1800px;
+      margin: 0 auto;
+      align-items: start;
+      /* Otimizações para laptops */
+      container-type: inline-size;
+    }
+
+
+    /* Configurações otimizadas para laptops */
+    @supports (container-type: inline-size) {
+      .container {
+        /* Usa container queries para melhor responsividade */
+        width: 100%;
+        box-sizing: border-box;
+      }
+    }
+
+
+    .panel-controls {
+      grid-area: controls;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent-2) transparent;
+    }
+
+
+    .panel-controls::-webkit-scrollbar {
+      width: 6px;
+    }
+
+
+    .panel-controls::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+
+    .panel-controls::-webkit-scrollbar-thumb {
+      background: var(--accent-2);
+      border-radius: 3px;
+    }
+
+
+    .canvas-wrap {
+      grid-area: simulation;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      min-height: 160px;
+      height: 90%;
+      max-width: 100%;
+      width: 100%;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(34,197,94,0.06);
+      background: #181f2a;
+      margin: 0 auto;
+      padding-bottom: 6px;
+      border: 1px solid #232a36;
+    }
+
+
+    .panel-results {
+      grid-area: formulas;
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+      max-height: calc(100vh - 100px);
+      background: var(--glass);
+      border-radius: var(--radius);
+      box-shadow: 0 2px 16px #38bdf822;
+      padding: 0 0 24px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+
+    .panel {
+      background: var(--glass);
+      border: var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.3s, border 0.2s, transform 0.2s;
+      animation: fadeInUp 0.8s cubic-bezier(.4,2,.3,1);
+      backdrop-filter: blur(var(--blur));
+    }
+
+
+    .panel:hover {
+      box-shadow: 0 4px 20px rgba(34,197,94,0.12);
+      transform: translateY(-1px);
+    }
+
+
+    .panel-controls {
+      position: sticky;
+      top: 20px;
+      height: fit-content;
+      max-height: calc(100vh - 100px);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent-2) transparent;
+    }
+
+
+    .panel-controls::-webkit-scrollbar {
+      width: 6px;
+    }
+
+
+    .panel-controls::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+
+    .panel-controls::-webkit-scrollbar-thumb {
+      background: var(--accent-2);
+      border-radius: 3px;
+    }
+
+
+    .panel h2 {
+      font-size: 16px;
+      margin: 0;
+      padding: 18px 22px 10px 22px;
+      border-bottom: var(--border);
+      background: var(--panel);
+      font-weight: 600;
+      letter-spacing: 0.1px;
+      color: var(--accent-2);
+      border-top-left-radius: var(--radius);
+      border-top-right-radius: var(--radius);
+      text-shadow: none;
+    }
+
+
+    .controls {
+      padding: 16px 18px 8px 18px;
+      display: grid;
+      gap: 14px;
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 120px;
+      gap: 12px;
+      align-items: center;
+    }
+    label {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.1px;
+    }
+    input[type="number"], input[type="range"], select {
+      width: 100%;
+      background: var(--soft);
+      border: 1.5px solid #374151;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 14px;
+      outline: none;
+      font-size: 15px;
+      font-family: inherit;
+      box-shadow: 0 2px 8px #38bdf822;
+      transition: border 0.2s, box-shadow 0.2s;
+    }
+    input[type="number"]:focus, input[type="range"]:focus, select:focus {
+      border-color: var(--focus);
+      box-shadow: 0 2px 12px #38bdf866;
+    }
+    input[type="range"] {
+      padding: 0;
+      height: 32px;
+      accent-color: var(--accent-2);
+    }
+
+
+    .switch {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .switch input {
+      transform: scale(1.15);
+      accent-color: var(--accent-2);
+      margin-right: 2px;
+    }
+
+
+    .buttons {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 18px 16px 18px;
+    }
+    .btn {
+      border-radius: 14px;
+      border: 1.5px solid #334155;
+      padding: 12px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      background: linear-gradient(180deg, #1e293b, #111827);
+      color: var(--text);
+      box-shadow: 0 2px 12px #38bdf822;
+      transition: 120ms transform cubic-bezier(.4,2,.3,1), 120ms box-shadow cubic-bezier(.4,2,.3,1), filter 0.2s;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+      outline: none;
+      position: relative;
+      overflow: hidden;
+      filter: brightness(1);
+    }
+    .btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 1px 4px #38bdf822;
+      filter: brightness(0.95);
+    }
+    .btn:hover {
+      transform: translateY(-2px) scale(1.06);
+      box-shadow: 0 14px 32px #22c55e44;
+      z-index: 2;
+      filter: brightness(1.08);
+    }
+    .btn:focus {
+      border-color: var(--focus);
+      box-shadow: 0 2px 16px #38bdf866;
+    }
+    .btn.primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: #0a0f1f;
+      border-color: transparent;
+      box-shadow: 0 2px 16px #22c55e44;
+    }
+    .btn.warn {
+      background: linear-gradient(90deg, #fb923c, #f97316);
+      color: #0a0f1f;
+      border-color: transparent;
+      box-shadow: 0 2px 16px #fbbf2444;
+    }
+
+
+    .calc {
+      padding: 18px 18px 14px 18px;
+      border-top: 1.5px dashed #263041;
+      background: linear-gradient(90deg, #0b1220 80%, #38bdf822 100%);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 14px;
+      color: #d1d5db;
+      overflow: auto;
+      max-height: 65vh;
+      white-space: pre-wrap;
+      border-bottom-left-radius: var(--radius);
+      border-bottom-right-radius: var(--radius);
+      box-shadow: 0 2px 12px #38bdf822;
+    }
+
+
+    canvas {
+      display: block;
+      width: 96%;
+       
+      padding: 12px 18px;
+      border-top: var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+      letter-spacing: 0.1px;
+    }
+
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #0b1220 80%, #38bdf822 100%);
+      border: var(--border);
+      box-shadow: 0 2px 8px #38bdf822;
+      font-weight: 600;
+      animation: fadeInUp 1.3s cubic-bezier(.4,2,.3,1);
+    }
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-block;
+      box-shadow: 0 2px 8px #38bdf822;
+      animation: pulseDot 1.6s infinite alternate cubic-bezier(.4,2,.3,1);
+    }
+    .collapsible-header {
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .collapsible-header:hover {
+      background: linear-gradient(90deg, #1a2332, #1f2937);
+      box-shadow: 0 2px 8px rgba(56,189,248,0.1);
+    }
+    .toggle-icon {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 16px;
+      font-weight: bold;
+      color: var(--accent-2);
+      text-shadow: 0 0 8px rgba(56,189,248,0.3);
+    }
+    .toggle-icon.rotated {
+      transform: rotate(-90deg);
+      color: var(--muted);
+    }
+    .collapsible-content {
+      max-height: 650px;
+      opacity: 1;
+      transform: translateY(0);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    .collapsible-content.hidden {
+      max-height: 0;
+      opacity: 0;
+      transform: translateY(-20px);
+      padding-top: 0;
+      padding-bottom: 0;
+      border-top: none;
+    }
+
+
+    /* Animações */
+      .panel-controls {
+    min-width: 340px;
+    max-width: 520px;
+        background: var(--glass);
+        box-shadow: 0 2px 16px #38bdf822;
+        padding: 0 0 18px 0;
+        border-radius: var(--radius);
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        align-items: stretch;
+      }
+      .card-group {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        margin: 12px 18px 0 18px;
+      }
+      .card {
+        background: #232a36cc;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px #38bdf822;
+        padding: 18px 16px 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .card-title {
+        font-size: 15px;
+        color: var(--accent-2);
+        font-weight: 700;
+        margin-bottom: 8px;
+        letter-spacing: 0.2px;
+        text-shadow: 0 1px 8px #38bdf822;
+      }
+      .canvas-header {
+        padding: 22px 32px 18px 32px;
+        border-bottom: 1px solid #1f2937;
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+ 
+      }
+      .canvas-title {
+        font-size: 18px;
+        color: var(--accent-2);
+        font-weight: 700;
+        letter-spacing: 0.2px;
+        margin-right: 50px;
+        text-shadow: 0 1px 8px #38bdf822;
+      }
+      .hud {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas;
+        font-size: 13px;
+        color: #38bdf8;
+        background: rgba(17,24,39,0.7);
+        border-radius: 8px;
+        padding: 6px 14px;
+        box-shadow: 0 2px 8px #38bdf822;
+      }
+      .panel-results {
+  max-width: 2000px;
+        background: var(--glass);
+        border-radius: var(--radius);
+        box-shadow: 0 2px 16px #38bdf822;
+        padding: 0 0 24px 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+      }
+      .panel-results h2 {
+        padding: 22px 32px 14px 32px;
+        font-size: 17px;
+        color: var(--accent-2);
+        font-weight: 700;
+        border-bottom: var(--border);
+        background: var(--panel);
+        border-top-left-radius: var(--radius);
+        border-top-right-radius: var(--radius);
+        margin: 0;
+        letter-spacing: 0.1px;
+        text-shadow: 0 1px 8px #38bdf822;
+      }
+      .panel-footer {
+        padding: 14px 32px 0 0;
+        font-size: 13px;
+        color: var(--muted);
+        text-align: right;
+        background: none;
+        border-bottom-left-radius: 14px;
+        border-bottom-right-radius: 14px;
+      }
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-32px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(32px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInLeft {
+      from { opacity: 0; transform: translateX(-32px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(32px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pulseDot {
+      from { filter: brightness(1) drop-shadow(0 0 0 #38bdf8); }
+      to { filter: brightness(1.3) drop-shadow(0 0 8px #38bdf8); }
+    }
+
+
+    /* ===== BREAKPOINTS RESPONSIVOS ===== */
+   
+    /* Desktop Large (1600px+) - Experiência premium para telas grandes */
+    @media (min-width: 1600px) {
+      .container {
+        grid-template-columns: 420px 1fr 450px;
+        gap: 32px;
+        max-width: 2000px;
+        padding: 32px 24px;
+      }
+      .canvas-wrap {
+        min-height: 500px;
+      }
+      .calc {
+        max-height: 75vh;
+        font-size: 15px;
+      }
+    }
+
+
+    /* Laptop Large (1366px - 1599px) - Otimizado para laptops grandes */
+    @media (max-width: 1599px) and (min-width: 1366px) {
+      .container {
+        grid-template-columns: 380px 1fr 400px;
+        gap: 24px;
+        max-width: 1500px;
+      }
+      .canvas-wrap {
+        min-height: 450px;
+      }
+    }
+
+
+    /* Laptop Standard (1024px - 1365px) - Foco principal */
+    @media (max-width: 1365px) and (min-width: 1024px) {
+      .container {
+        grid-template-columns: 350px 1fr 360px;
+        gap: 20px;
+        max-width: 1300px;
+        padding: 24px 20px;
+      }
+      .canvas-wrap {
+        min-height: 400px;
+      }
+      .panel h2 {
+        font-size: 15px;
+        padding: 16px 20px 8px 20px;
+      }
+      .calc {
+        font-size: 13px;
+      }
+    }
+
+
+    /* Tablet Landscape (768px - 1023px) */
+    @media (max-width: 1023px) and (min-width: 768px) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+          "controls"
+          "simulation"
+          "formulas";
+        gap: 20px;
+        padding: 20px 16px;
+        max-width: 100%;
+      }
+      .panel-controls, .panel-results {
+        position: static;
+        max-height: none;
+      }
+      .canvas-wrap {
+        min-height: 350px;
+        max-height: 50vh;
+      }
+      .calc {
+        max-height: 40vh;
+      }
+    }
+
+
+    /* Tablet Portrait + Mobile Large (480px - 767px) */
+    @media (max-width: 767px) and (min-width: 480px) {
+      .container {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 16px 12px;
+      }
+      header {
+        padding: 16px 20px 12px 20px;
+      }
+      header h1 {
+        font-size: 18px;
+      }
+      .canvas-wrap {
+        min-height: 300px;
+        max-height: 45vh;
+      }
+      .panel h2 {
+        font-size: 14px;
+        padding: 14px 16px 8px 16px;
+      }
+      .controls {
+        padding: 12px 14px;
+        gap: 12px;
+      }
+      .calc {
+        max-height: 35vh;
+        font-size: 12px;
+      }
+      .buttons {
+        flex-direction: row;
+        gap: 8px;
+      }
+      .btn {
+        font-size: 14px;
+        padding: 10px 14px;
+      }
+    }
+
+
+    /* Mobile Small (320px - 479px) */
+    @media (max-width: 479px) {
+      .container {
+        gap: 12px;
+        padding: 12px 8px;
+      }
+      header {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 16px 10px 16px;
+      }
+      header h1 {
+        font-size: 16px;
+        text-align: center;
+      }
+      header .badge {
+        font-size: 11px;
+        padding: 4px 8px;
+      }
+      .canvas-wrap {
+        min-height: 250px;
+        max-height: 40vh;
+        border-radius: 12px;
+      }
+      .panel {
+        border-radius: 12px;
+      }
+      .panel h2 {
+        font-size: 13px;
+        padding: 12px 14px 6px 14px;
+      }
+      .controls {
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .row {
+        grid-template-columns: 1fr;
+        gap: 6px;
+      }
+      .row label {
+        font-size: 13px;
+      }
+      input[type="number"], input[type="range"] {
+        padding: 10px 12px;
+        font-size: 14px;
+      }
+      .calc {
+        max-height: 30vh;
+        font-size: 11px;
+        padding: 12px;
+      }
+      .buttons {
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px;
+      }
+      .btn {
+        font-size: 13px;
+        padding: 12px 16px;
+        width: 100%;
+      }
+      .chip {
+        padding: 4px 8px;
+        font-size: 10px;
+        gap: 4px;
+      }
+      .legend {
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Projeto de Física — Lançamento de Projétil (interativo)</h1>
+    <span class="badge">1º–3º ano • Cinemática</span>
+  </header>
+
+
+
+
+    <div class="container">
+      <aside class="panel panel-controls">
+        <h2>Configuração do Lançamento</h2>
+        <div class="card-group">
+          <div class="card card-params">
+            <div class="card-title">Parâmetros Físicos</div>
+            <form class="controls" autocomplete="off" onsubmit="return false;">
+              <div class="row"><label for="v0">Velocidade inicial v₀ (m/s)</label><input id="v0" type="number" value="20" step="0.1" min="0" /></div>
+              <div class="row"><label for="angulo">Ângulo de lançamento (°)</label><input id="angulo" type="number" value="45" step="1" min="0" max="90" /></div>
+              <div class="row"><label for="h0">Altura inicial h₀ (m)</label><input id="h0" type="number" value="0" step="0.1" min="0" /></div>
+              <div class="row"><label for="g">Gravidade g (m/s²)</label><input id="g" type="number" value="9.8" step="0.1" min="0.1" /></div>
+            </form>
+          </div>
+          <div class="card card-visual">
+            <div class="card-title">Visualização</div>
+            <form class="controls" autocomplete="off" onsubmit="return false;">
+              <div class="row"><label for="speed">Velocidade da animação</label><input id="speed" type="range" min="0.25" max="4" step="0.25" value="1" /></div>
+              <div class="switch"><input type="checkbox" id="trail" checked /> <label for="trail">Mostrar trilha</label></div>
+              <div class="switch"><input type="checkbox" id="vectors" /> <label for="vectors">Mostrar vetores (v e g)</label></div>
+            </form>
+          </div>
+        </div>
+        <div class="buttons">
+          <button class="btn primary" id="btnStart" title="Iniciar a simulação">▶ Iniciar</button>
+          <button class="btn" id="btnPause" title="Pausar ou retomar">⏸ Pausar</button>
+          <button class="btn warn" id="btnReset" title="Resetar todos os parâmetros">⟲ Resetar</button>
+        </div>
+      </aside>
+
+
+      <main class="panel canvas-wrap">
+        <div class="canvas-header">
+          <div class="canvas-title">Área de Simulação</div>
+          <div id="hud" class="hud"></div>
+        </div>
+        <canvas id="sim" width="1100" height="560"></canvas>
+        <div class="legend">
+          <span class="chip"><span class="dot" style="background: var(--accent)"></span>Trajetória</span>
+          <span class="chip"><span class="dot" style="background: var(--accent-2)"></span>Velocidade</span>
+          <span class="chip"><span class="dot" style="background: var(--danger)"></span>Gravidade</span>
+          <span class="chip"><span class="dot" style="background: var(--accent-3)"></span>Alcance</span>
+        </div>
+      </main>
+
+
+      <!-- Painel de Fórmulas e Cálculos separado -->
+      <section class="panel panel-results">
+        <h2 class="collapsible-header" onclick="toggleCalc()">
+          Fórmulas e Cálculos
+          <span class="toggle-icon rotated" id="toggleIcon">▶</span>
+        </h2>
+        <div class="calc collapsible-content hidden" id="calcBox"></div>
+      </section>
+    </div>
+
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const v0El = $('#v0');
+    const angEl = $('#angulo');
+    const h0El = $('#h0');
+    const gEl = $('#g');
+    const speedEl = $('#speed');
+    const trailEl = $('#trail');
+    const vectorsEl = $('#vectors');
+    const calcBox = $('#calcBox');
+    const hud = $('#hud');
+
+
+    const canvas = document.getElementById('sim');
+    const ctx = canvas.getContext('2d');
+
+
+    let state = {
+      running: false,
+      t: 0,
+      dtBase: 1/60,
+      path: [],
+      lastPoint: null,
+      world: { width: 50, height: 20, margin: 20, scale: 10 },
+      params: {}
+    };
+
+
+    function toRad(deg) { return deg * Math.PI / 180; }
+    function clamp(n, min, max) { return Math.max(min, Math.min(max, n)); }
+
+
+    function computeParams() {
+      const v0 = Math.max(0, parseFloat(v0El.value || '0'));
+      const ang = clamp(parseFloat(angEl.value || '0'), 0, 90);
+      const h0 = Math.max(0, parseFloat(h0El.value || '0'));
+      const g = Math.max(0.01, parseFloat(gEl.value || '9.8'));
+
+
+      const rad = toRad(ang);
+      const v0x = v0 * Math.cos(rad);
+      const v0y = v0 * Math.sin(rad);
+
+
+      const disc = v0y*v0y + 2*g*h0; // discriminante para achar T
+      const T = (v0y + Math.sqrt(disc)) / g; // raiz positiva
+      const R = v0x * T; // alcance
+      const hMax = h0 + (v0y*v0y) / (2*g);
+      const tUp = v0y / g;
+
+
+      return { v0, ang, rad, h0, g, v0x, v0y, T, R, hMax, tUp };
+    }
+
+
+    function fitWorld(p) {
+      // Ajusta a escala para sempre mostrar todo o trajeto, mesmo para alcances muito grandes
+      const minW = 10; const minH = 5;
+      let w = Math.max(minW, p.R * 1.1 + 2);
+      let h = Math.max(minH, p.hMax * 1.1 + 2);
+      const margin = 30;
+      // Se o alcance for maior que a largura do canvas, aumenta a largura do mundo
+      const canvasWm = (canvas.width - margin*2) / 10; // metros visíveis padrão
+      if (p.R > canvasWm) {
+        w = p.R * 1.15 + 4;
+      }
+      const sx = (canvas.width - margin*2) / (w || minW);
+      const sy = (canvas.height - margin*2) / (h || minH);
+      const scale = Math.min(sx, sy);
+      state.world = { width: w, height: h, margin, scale };
+    }
+
+
+    function worldToScreen(x, y) {
+      const { margin, scale } = state.world;
+      const px = margin + x * scale;
+      const py = canvas.height - margin - y * scale; // y=0 no chão
+      return [px, py];
+    }
+
+
+    function kinematicsAt(t, p) {
+      const x = p.v0x * t;
+      const y = p.h0 + p.v0y * t - 0.5 * p.g * t * t;
+      const vy = p.v0y - p.g * t;
+      const vx = p.v0x;
+      return { x, y, vx, vy };
+    }
+
+
+    function format(n) {
+      return (Math.round(n * 100) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    }
+
+
+    function updateCalcPanel(p) {
+      const lines = [];
+      lines.push('Decomposição de v₀:');
+      lines.push(`v₀x = v₀·cos(θ) = ${format(p.v0)}·cos(${format(p.ang)}) = ${format(p.v0x)} m/s`);
+      lines.push(`v₀y = v₀·sin(θ) = ${format(p.v0)}·sin(${format(p.ang)}) = ${format(p.v0y)} m/s`);
+      lines.push('');
+      lines.push('Tempo de voo (resolvendo h₀ + v₀y·T − (g/2)·T² = 0):');
+      const disc = p.v0y*p.v0y + 2*p.g*p.h0;
+      lines.push(`Δ = v₀y² + 2·g·h₀ = ${format(p.v0y*p.v0y)} + 2·${format(p.g)}·${format(p.h0)} = ${format(disc)}`);
+      lines.push(`T = (v₀y + √Δ) / g = (${format(p.v0y)} + √${format(disc)}) / ${format(p.g)} = ${format(p.T)} s`);
+      lines.push('');
+      lines.push('Alcance horizontal:');
+      lines.push(`R = v₀x·T = ${format(p.v0x)}·${format(p.T)} = ${format(p.R)} m`);
+      lines.push('');
+      lines.push('Altura máxima:');
+      lines.push(`h_max = h₀ + v₀y²/(2g) = ${format(p.h0)} + ${format(p.v0y*p.v0y)}/(2·${format(p.g)}) = ${format(p.hMax)} m`);
+      lines.push('');
+      lines.push('Equações paramétricas do movimento:');
+      lines.push('x(t) = v₀x·t');
+      lines.push('y(t) = h₀ + v₀y·t − (g/2)·t²');
+      lines.push('');
+      lines.push(`Tempo de subida: t_sub = v₀y/g = ${format(p.v0y)}/${format(p.g)} = ${format(p.tUp)} s`);
+      calcBox.textContent = lines.join('\n');
+    }
+
+
+    function drawGrid() {
+      const { margin, scale } = state.world;
+      ctx.save();
+      // Grade mais visível e adaptativa
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(56,189,248,0.18)';
+      ctx.setLineDash([4, 4]);
+
+
+      // grade em metros (a cada 1 m) — espaçamento mínimo de 24 px
+      const stepMeters = Math.max(1, Math.ceil(24 / scale));
+
+
+      ctx.font = '13px ui-monospace, monospace';
+      ctx.fillStyle = 'rgba(56,189,248,0.55)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+
+        // Evita sobreposição dos números: só desenha se estiverem espaçados o suficiente
+        let minXSpace = 60; // espaçamento mínimo entre números horizontais
+        let minYSpace = 36; // espaçamento mínimo entre números verticais
+        let xLabelStep = stepMeters;
+        let yLabelStep = stepMeters;
+        // Se o espaço for pequeno, aumenta o passo
+        if ((canvas.width - margin*2) / state.world.width < minXSpace) {
+          xLabelStep = Math.ceil(state.world.width / ((canvas.width - margin*2) / minXSpace));
+        }
+        if ((canvas.height - margin*2) / state.world.height < minYSpace) {
+          yLabelStep = Math.ceil(state.world.height / ((canvas.height - margin*2) / minYSpace));
+        }
+        let lastXLabel = -Infinity;
+        for (let xm = 0; xm <= state.world.width; xm += stepMeters) {
+          const [x] = worldToScreen(xm, 0);
+          ctx.save();
+          ctx.shadowColor = 'rgba(56,189,248,0.18)';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.moveTo(x, margin);
+          ctx.lineTo(x, canvas.height - margin);
+          ctx.stroke();
+          ctx.restore();
+          // número da escala com fundo, só se estiver espaçado e múltiplo do passo
+          if (xm > 0 && x - lastXLabel > minXSpace && xm % xLabelStep === 0) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(56,189,248,0.18)';
+            ctx.fillRect(x-18, canvas.height - margin + 2, 36, 20);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 13px ui-monospace, monospace';
+            ctx.fillText(xm + 'm', x, canvas.height - margin + 6);
+            ctx.restore();
+            lastXLabel = x;
+          }
+        }
+
+
+        // Mesma lógica para linhas horizontais
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        let lastYLabel = -Infinity;
+        for (let ym = 0; ym <= state.world.height; ym += stepMeters) {
+          const [, y] = worldToScreen(0, ym);
+          ctx.save();
+          ctx.shadowColor = 'rgba(56,189,248,0.18)';
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.moveTo(margin, y);
+          ctx.lineTo(canvas.width - margin, y);
+          ctx.stroke();
+          ctx.restore();
+          if (ym > 0 && y - lastYLabel > minYSpace && ym % yLabelStep === 0) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(56,189,248,0.18)';
+            ctx.fillRect(margin - 44, y-10, 38, 20);
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = 'bold 13px ui-monospace, monospace';
+            ctx.fillText(ym + 'm', margin - 8, y);
+            ctx.restore();
+            lastYLabel = y;
+          }
+        }
+
+
+      ctx.setLineDash([]);
+      // solo destacado
+      ctx.strokeStyle = 'rgba(34,197,94,0.55)';
+      ctx.lineWidth = 3.2;
+      ctx.beginPath();
+      const y0 = worldToScreen(0, 0)[1];
+      ctx.moveTo(margin, y0);
+      ctx.lineTo(canvas.width - margin, y0);
+      ctx.stroke();
+
+
+      ctx.restore();
+    }
+
+
+    function drawArrow(x, y, vx, vy, color, scalePix=1) {
+      const len = Math.sqrt(vx*vx + vy*vy);
+      if (len < 1e-6) return;
+      const ux = vx/len, uy = vy/len;
+      const size = 10; // tamanho da ponta em px
+
+
+      ctx.save();
+      ctx.strokeStyle = color; ctx.fillStyle = color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + vx*scalePix, y + vy*scalePix);
+      ctx.stroke();
+
+
+      // ponta
+      const px = x + vx*scalePix, py = y + vy*scalePix;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px - ux*size - uy*size*0.6, py - uy*size + ux*size*0.6);
+      ctx.lineTo(px - ux*size + uy*size*0.6, py - uy*size - ux*size*0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+
+    let tooltip = null;
+    function showTooltip(x, y, content) {
+      if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.style.position = 'fixed';
+        tooltip.style.zIndex = '1000';
+        tooltip.style.background = 'rgba(34,197,94,0.97)';
+        tooltip.style.color = '#0f172a';
+        tooltip.style.fontSize = '15px';
+        tooltip.style.fontFamily = 'ui-monospace, monospace';
+        tooltip.style.padding = '8px 14px';
+        tooltip.style.borderRadius = '10px';
+        tooltip.style.boxShadow = '0 2px 12px #22c55e44';
+        tooltip.style.pointerEvents = 'none';
+        document.body.appendChild(tooltip);
+      }
+      tooltip.innerHTML = content;
+      tooltip.style.left = (x + 18) + 'px';
+      tooltip.style.top = (y - 10) + 'px';
+      tooltip.style.display = 'block';
+    }
+    function hideTooltip() {
+      if (tooltip) tooltip.style.display = 'none';
+    }
+
+
+    function drawScene() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawGrid();
+
+
+      const p = state.params;
+      const { margin, scale } = state.world;
+
+
+      // Cor dinâmica para o marcador de alcance
+      let alcanceColor = '#fbbf24';
+      if (p.R > 80) {
+        alcanceColor = '#ef4444'; // vermelho para alcances muito grandes
+      } else if (p.R > 40) {
+        alcanceColor = '#38bdf8'; // azul para alcances médios
+      }
+
+
+      // marcador de alcance previsto
+      ctx.save();
+      ctx.strokeStyle = alcanceColor;
+      ctx.setLineDash([8, 6]);
+      ctx.lineWidth = 2;
+      const [xr, yr] = worldToScreen(p.R, 0);
+      ctx.beginPath(); ctx.moveTo(xr, margin); ctx.lineTo(xr, canvas.height - margin); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = alcanceColor;
+      ctx.font = '12px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`R ≈ ${format(p.R)} m`, xr, canvas.height - margin - 6);
+      ctx.restore();
+
+
+      // trilha
+      if (trailEl.checked && state.path.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = '#22c55e';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        const [x0, y0] = worldToScreen(state.path[0].x, state.path[0].y);
+        ctx.moveTo(x0, y0);
+        for (let i = 1; i < state.path.length; i++) {
+          const [xi, yi] = worldToScreen(state.path[i].x, state.path[i].y);
+          ctx.lineTo(xi, yi);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+
+      // projétil
+      const last = state.lastPoint || { x: 0, y: p.h0, vx: p.v0x, vy: p.v0y };
+      const [bx, by] = worldToScreen(last.x, last.y);
+
+
+      // brilho
+      const grd = ctx.createRadialGradient(bx, by, 2, bx, by, 26);
+      grd.addColorStop(0, 'rgba(56,189,248,0.9)');
+      grd.addColorStop(1, 'rgba(56,189,248,0.0)');
+      ctx.fillStyle = grd;
+      ctx.beginPath(); ctx.arc(bx, by, 26, 0, Math.PI*2); ctx.fill();
+
+
+      // corpo
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(bx, by, 6, 0, Math.PI*2); ctx.fill();
+
+
+      // vetores
+      if (vectorsEl.checked) {
+        // velocidade (escala visual, não é 1:1)
+        const scaleVel = 6; // px por (m/s)
+        drawArrow(bx, by, last.vx, -last.vy, '#38bdf8', 1/scaleVel * 2); // invertendo y
+        // gravidade (fixo para baixo)
+        drawArrow(bx, by, 0, 40, '#ef4444', 1); // seta para baixo
+      }
+
+
+      // HUD
+      hud.innerText = `t = ${format(state.t)} s  |  x = ${format(last.x)} m, y = ${format(Math.max(0,last.y))} m  |  v = (${format(last.vx)} , ${format(last.vy)}) m/s`;
+    }
+
+
+    // Detecta mouse sobre a bolinha quando pausado
+    canvas.addEventListener('mousemove', function(e) {
+      if (!state.running) {
+        const rect = canvas.getBoundingClientRect();
+        // Corrige para coordenadas relativas ao tamanho real do canvas
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        const mouseX = (e.clientX - rect.left) * scaleX;
+        const mouseY = (e.clientY - rect.top) * scaleY;
+        const p = state.params;
+        const last = state.lastPoint || { x: 0, y: p.h0, vx: p.v0x, vy: p.v0y };
+        const [bx, by] = worldToScreen(last.x, last.y);
+        // raio da bolinha = 6, área sensível aumentada para 22px
+        if (Math.sqrt((mouseX - bx)**2 + (mouseY - by)**2) <= 22) {
+          showTooltip(e.clientX, e.clientY, `<b>Posição do projétil</b><br>x = ${format(last.x)} m<br>y = ${format(Math.max(0,last.y))} m<br>vₓ = ${format(last.vx)} m/s<br>vᵧ = ${format(last.vy)} m/s<br>t = ${format(state.t)} s`);
+        } else {
+          hideTooltip();
+        }
+      } else {
+        hideTooltip();
+      }
+    });
+    canvas.addEventListener('mouseleave', hideTooltip);
+
+
+    function resetSim(keepScale=false) {
+      state.running = false; state.t = 0; state.path = [];
+      state.params = computeParams();
+      // Sempre ajusta a escala ao resetar, para garantir que o trajeto fique visível
+      fitWorld(state.params);
+      state.lastPoint = { x: 0, y: state.params.h0, vx: state.params.v0x, vy: state.params.v0y };
+      updateCalcPanel(state.params);
+      drawScene();
+    }
+
+
+    function step() {
+      if (!state.running) return;
+      const speedMul = parseFloat(speedEl.value || '1');
+      const p = state.params;
+      const dt = state.dtBase * speedMul;
+      state.t += dt;
+
+
+      const k = kinematicsAt(state.t, p);
+
+
+      if (k.y <= 0 && state.t > 0) {
+        // chegou ao chão — travar em y=0 e parar
+        state.running = false;
+        const kEnd = { ...k, y: 0 };
+        state.lastPoint = kEnd;
+        state.path.push(kEnd);
+        drawScene();
+        return;
+      }
+
+
+      state.lastPoint = k;
+      state.path.push(k);
+      drawScene();
+      requestAnimationFrame(step);
+    }
+
+
+    // Eventos
+    $('#btnStart').addEventListener('click', () => {
+      // recalcula tudo e inicia
+      resetSim(true);
+      state.running = true;
+      requestAnimationFrame(step);
+    });
+
+
+    $('#btnPause').addEventListener('click', () => {
+  state.running = !state.running;
+  drawScene(); // Garante que a bolinha está desenhada e pronta para o mouse
+  if (state.running) requestAnimationFrame(step);
+    });
+
+
+    $('#btnReset').addEventListener('click', () => resetSim(false));
+
+
+    // atualizar cálculos ao mudar parâmetros
+    ;[v0El, angEl, h0El, gEl].forEach(el => {
+      el.addEventListener('input', () => {
+        const p = computeParams();
+        updateCalcPanel(p);
+      });
+    });
+
+
+    resetSim(false);
+
+
+    // Função para alternar o painel de cálculos com animação suave
+    function toggleCalc() {
+      const calcBox = document.getElementById('calcBox');
+      const toggleIcon = document.getElementById('toggleIcon');
+     
+      if (calcBox.classList.contains('hidden')) {
+        // Abrir painel
+        calcBox.classList.remove('hidden');
+        toggleIcon.textContent = '▼';
+        toggleIcon.classList.remove('rotated');
+       
+        // Força o navegador a recalcular o layout antes da animação
+        calcBox.offsetHeight;
+       
+        // Adiciona uma pequena animação de entrada
+        setTimeout(() => {
+          calcBox.style.transform = 'translateY(0)';
+          calcBox.style.opacity = '1';
+        }, 10);
+      } else {
+        // Fechar painel
+        calcBox.style.transform = 'translateY(-20px)';
+        calcBox.style.opacity = '0';
+        toggleIcon.textContent = '▶';
+        toggleIcon.classList.add('rotated');
+       
+        // Aguarda a animação terminar antes de adicionar a classe hidden
+        setTimeout(() => {
+          calcBox.classList.add('hidden');
+        }, 500);
+      }
+    }
+  </script>
+</body>
+</html>
+
+
+
+
